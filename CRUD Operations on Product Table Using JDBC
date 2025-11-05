@@ -1,0 +1,164 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Scanner;
+
+public class ProductCrudApp {
+
+    private static final String URL      = "jdbc:mysql://localhost:3306/your_database_name?serverTimezone=UTC";
+    private static final String USER     = "your_username";
+    private static final String PASSWORD = "your_password";
+
+    private static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USER, PASSWORD);
+    }
+
+    private static void createProduct(Scanner sc) {
+        System.out.print("Enter Product Name: ");
+        String name = sc.nextLine().trim();
+        System.out.print("Enter Price: ");
+        double price = Double.parseDouble(sc.nextLine().trim());
+        System.out.print("Enter Quantity: ");
+        int qty = Integer.parseInt(sc.nextLine().trim());
+
+        String sql = "INSERT INTO Product (ProductName, Price, Quantity) VALUES (?, ?, ?)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            conn.setAutoCommit(false);
+
+            ps.setString(1, name);
+            ps.setDouble(2, price);
+            ps.setInt(3, qty);
+
+            int rows = ps.executeUpdate();
+            System.out.println(rows + " product(s) inserted.");
+
+            conn.commit();
+        }
+        catch (SQLException e) {
+            System.err.println("Insert failed, attempting rollback.");
+            e.printStackTrace();
+            try { 
+                if (getConnection() != null) getConnection().rollback();
+            } catch (SQLException ex2) {
+                ex2.printStackTrace();
+            }
+        }
+    }
+
+    private static void readProducts() {
+        String sql = "SELECT ProductID, ProductName, Price, Quantity FROM Product";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            System.out.println("Products:");
+            while (rs.next()) {
+                int    id   = rs.getInt("ProductID");
+                String name = rs.getString("ProductName");
+                double price= rs.getDouble("Price");
+                int    qty  = rs.getInt("Quantity");
+                System.out.printf("ID=%d, Name=%s, Price=%.2f, Qty=%d%n", id, name, price, qty);
+            }
+        }
+        catch (SQLException e) {
+            System.err.println("Read failed.");
+            e.printStackTrace();
+        }
+    }
+
+    private static void updateProduct(Scanner sc) {
+        System.out.print("Enter ProductID to update: ");
+        int id = Integer.parseInt(sc.nextLine().trim());
+        System.out.print("Enter new Price: ");
+        double price = Double.parseDouble(sc.nextLine().trim());
+        System.out.print("Enter new Quantity: ");
+        int qty = Integer.parseInt(sc.nextLine().trim());
+
+        String sql = "UPDATE Product SET Price = ?, Quantity = ? WHERE ProductID = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            conn.setAutoCommit(false);
+
+            ps.setDouble(1, price);
+            ps.setInt(2, qty);
+            ps.setInt(3, id);
+
+            int rows = ps.executeUpdate();
+            System.out.println(rows + " product(s) updated.");
+
+            conn.commit();
+        }
+        catch (SQLException e) {
+            System.err.println("Update failed, attempting rollback.");
+            e.printStackTrace();
+            try {
+                if (getConnection() != null) getConnection().rollback();
+            } catch (SQLException ex2) {
+                ex2.printStackTrace();
+            }
+        }
+    }
+
+    private static void deleteProduct(Scanner sc) {
+        System.out.print("Enter ProductID to delete: ");
+        int id = Integer.parseInt(sc.nextLine().trim());
+
+        String sql = "DELETE FROM Product WHERE ProductID = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            conn.setAutoCommit(false);
+
+            ps.setInt(1, id);
+
+            int rows = ps.executeUpdate();
+            System.out.println(rows + " product(s) deleted.");
+
+            conn.commit();
+        }
+        catch (SQLException e) {
+            System.err.println("Delete failed, attempting rollback.");
+            e.printStackTrace();
+            try {
+                if (getConnection() != null) getConnection().rollback();
+            } catch (SQLException ex2) {
+                ex2.printStackTrace();
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        String choice;
+        do {
+            System.out.println("\n-- Product Management Menu --");
+            System.out.println("1. Create Product");
+            System.out.println("2. Read Products");
+            System.out.println("3. Update Product");
+            System.out.println("4. Delete Product");
+            System.out.println("5. Exit");
+            System.out.print("Enter choice (1‐5): ");
+            choice = sc.nextLine().trim();
+
+            switch (choice) {
+                case "1": createProduct(sc); break;
+                case "2": readProducts(); break;
+                case "3": updateProduct(sc); break;
+                case "4": deleteProduct(sc); break;
+                case "5": System.out.println("Exiting."); break;
+                default: System.out.println("Invalid choice."); 
+            }
+        } while (!choice.equals("5"));
+
+        sc.close();
+    }
+}
